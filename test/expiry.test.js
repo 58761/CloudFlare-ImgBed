@@ -143,6 +143,7 @@ describe('file expiry', () => {
     describe('user configuration', () => {
         async function userConfig(fileExpiry) {
             const route = await loadFunction('functions/api/userConfig.js', {
+                getAlbumPolicy: async () => ({ enabled: true, defaultExpire: '3d' }),
                 fetchPageConfig: async () => ({ config: [] }),
                 fetchUploadConfig: async () => ({ fileExpiry }),
             });

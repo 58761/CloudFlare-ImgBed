@@ -62,9 +62,12 @@ for (const method of ['GET', 'HEAD']) {
 // Scheduled cleanup removes files past the grace period
 await setFile('old.png', { ExpiresAt: Date.now() - HOUR });
 const tasks = [];
+await sqlite.prepare('INSERT INTO settings (key, value, category) VALUES (?, ?, ?)')
+    .bind('manage@albumVisit@old@203.0.113.1', JSON.stringify({ ip: '203.0.113.1', lastVisitedAt: Date.now() - 25 * HOUR }), 'albumVisit').run();
 await worker.scheduled({}, env, { waitUntil: promise => tasks.push(promise) });
 await Promise.all(tasks);
 assert.equal(objects.has('old.png'), false);
 assert.equal(await sqlite.prepare('SELECT id FROM files WHERE id = ?').bind('old.png').first(), null);
+assert.equal(await sqlite.prepare('SELECT value FROM settings WHERE key = ?').bind('manage@albumVisit@old@203.0.113.1').first(), null);
 
 console.log('Worker entry passed: cache check, ETag revalidation and scheduled cleanup');

@@ -42,6 +42,9 @@ not_found_handling = "single-page-application"
 [images]
 binding = "IMAGES"
 
+[triggers]
+crons = ["*/10 * * * *"]
+
 [vars]
 # Secret 类型的变量在部署后单独上传，不写入此配置。
 `);

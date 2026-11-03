@@ -47,6 +47,7 @@ data() {
             { index: 'security', icon: 'shield', titleKey: 'sysConfigTabs.securitySettings' },
             { index: 'page', icon: 'pager', titleKey: 'sysConfigTabs.pageSettings' },
             { index: 'ai', titleKey: 'sysAI.title' },
+            { index: 'albumShares', icon: 'link', titleKey: 'albumSharing.title' },
             { index: 'others', icon: 'cog', titleKey: 'sysConfigTabs.otherSettings' }
         ]
     };

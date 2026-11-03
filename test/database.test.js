@@ -2,6 +2,15 @@ import assert from 'node:assert/strict';
 import { sqliteDatabase } from './helpers/database.js';
 
 describe('D1 database adapter', () => {
+    it('matches long settings prefixes literally, without SQL wildcard expansion', async () => {
+        const { sqlite, db } = await sqliteDatabase();
+        try {
+            const prefix = 'manage@albumVisit@' + 'a'.repeat(80) + '_%@';
+            await db.put(prefix + '1', '{}');
+            await db.put(prefix.replace('_%', 'XY') + '2', '{}');
+            assert.deepEqual((await db.list({ prefix })).keys.map(key => key.name), [prefix + '1']);
+        } finally { sqlite.db.close(); }
+    });
     it('pages through settings with a cursor instead of stopping at the limit', async () => {
         const { db } = await sqliteDatabase();
         // Session keys sort before sysConfig keys, so a single capped page would miss them.

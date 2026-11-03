@@ -8,13 +8,15 @@
                     <strong>{{ album.name }}</strong>
                     <small v-if="progress(album.id).total">{{ $t('albums.progress', progress(album.id)) }}</small>
                     <small v-else>{{ new Date(album.createdAt).toLocaleString() }}</small>
+                    <small v-if="album.expiresAt !== undefined">{{ $t('albumSharing.expiresAt') }}: {{ album.expiresAt === null ? $t('albumSharing.forever') : new Date(album.expiresAt).toLocaleString() }}</small>
+                    <small v-if="album.adminDisabled">{{ $t('albumSharing.adminDisabled') }}</small>
                     <small v-if="!album.enabled">{{ $t('albums.disabled') }}</small>
                 </div>
                 <div class="album-actions">
-                    <el-button size="small" :disabled="!album.enabled || busy === album.id" @click="copy(album)">{{ $t('albums.copy') }}</el-button>
-                    <a v-if="album.enabled" :href="shareUrl(album)" target="_blank" rel="noopener noreferrer">{{ $t('albums.view') }}</a>
+                    <el-button size="small" :disabled="!canShare(album) || busy === album.id" @click="copy(album)">{{ $t('albums.copy') }}</el-button>
+                    <a v-if="canShare(album)" :href="shareUrl(album)" target="_blank" rel="noopener noreferrer">{{ $t('albums.view') }}</a>
                     <el-button size="small" :disabled="busy === album.id" @click="rename(album)">{{ $t('albums.rename') }}</el-button>
-                    <el-button size="small" :disabled="busy === album.id" @click="change(album, { enabled: !album.enabled })">{{ $t(album.enabled ? 'albums.disable' : 'albums.enable') }}</el-button>
+                    <el-button size="small" :disabled="album.adminDisabled || busy === album.id" @click="change(album, { enabled: !album.enabled })">{{ $t(album.enabled ? 'albums.disable' : 'albums.enable') }}</el-button>
                     <el-button size="small" :disabled="busy === album.id" @click="rotate(album)">{{ $t('albums.rotate') }}</el-button>
                 </div>
             </article>
@@ -31,6 +33,7 @@ export default {
     emits: ['updated'],
     data: () => ({ busy: null }),
     methods: {
+        canShare(album) { return album.enabled && !album.adminDisabled && (album.expiresAt == null || album.expiresAt > Date.now()) },
         shareUrl(album) { return albumShareUrl(album) },
         progress(id) {
             const files = this.files.filter(file => file.album?.id === id)

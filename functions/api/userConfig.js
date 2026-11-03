@@ -2,6 +2,7 @@
  * 用户端页面配置 API
  * 负责读取页面配置并转换为前端可直接使用的用户配置对象
  */
+import { getAlbumPolicy } from '../utils/albumPolicy.js';
 import { fetchPageConfig, fetchUploadConfig } from "../utils/sysConfig.js";
 
 export async function onRequest(context) {
@@ -29,6 +30,8 @@ export async function onRequest(context) {
     }
 
     userConfig.serverRuntime = env.SERVER_RUNTIME;
+    const albumPolicy = await getAlbumPolicy(env);
+    userConfig.albumShare = { enabled: albumPolicy.enabled, defaultExpire: albumPolicy.defaultExpire };
 
     // 文件有效期：上传页和 API 用户据此展示可选项，最终仍由上传接口按设置校验
     // 字段始终存在，前端据此区分“后端支持但功能关闭”（enabled=false）和“后端尚不支持”（没有该字段）；

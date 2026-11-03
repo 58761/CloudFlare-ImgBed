@@ -18,6 +18,7 @@ import SysCogUpload from '@/components/config/SysCogUpload.vue';
 import SysCogSecurity from '@/components/config/SysCogSecurity.vue';
 import SysCogPage from '@/components/config/SysCogPage.vue';
 import SysCogOthers from '@/components/config/SysCogOthers.vue';
+import AlbumShareSettings from '@/components/config/AlbumShareSettings.vue';
 import SysCogAI from '@/components/config/SysCogAI.vue';
 import backgroundManager from '@/mixins/backgroundManager';
 
@@ -69,6 +70,8 @@ export default {
                     return SysCogPage;
                 case 'others':
                     return SysCogOthers;
+                case 'albumShares':
+                    return AlbumShareSettings;
                 case 'ai':
                     return SysCogAI;
                 default:

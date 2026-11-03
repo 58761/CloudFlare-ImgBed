@@ -52,9 +52,9 @@ export default {
                 this.cursor = data.cursor
             } catch (error) {
                 if (generation !== this.generation) return
-                this.unavailable = error.response?.status === 404
+                this.unavailable = [404, 410].includes(error.response?.status)
                 if (this.unavailable) { this.files = []; this.cursor = null; this.name = '' }
-                this.error = this.$t(this.unavailable ? 'albums.unavailable' : 'albums.loadFailed')
+                this.error = this.$t(error.response?.status === 410 ? 'albumSharing.expired' : (this.unavailable ? 'albums.unavailable' : 'albums.loadFailed'))
             } finally { if (generation === this.generation) this.busy = false }
         },
     },

@@ -200,6 +200,8 @@ describe('authentication and permission boundaries', () => {
             ['/api/manage/batch/list', 'list'], ['/api/manage/delete/file', 'delete'],
             ['/api/manage/delete', 'delete'], ['/api/manage/listOther', 'manage'],
             ['/api/manage/apiTokens', 'manage'],
+            ['/api/manage/album-shares', 'manage'],
+            ['/api/manage/album-shares?action=visits&id=folder', 'manage'],
         ]) {
             for (const token of ['list', 'delete', 'manage']) {
                 const response = await manage(request(path, { Authorization: `Bearer ${token}` }));

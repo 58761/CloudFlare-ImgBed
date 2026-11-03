@@ -169,6 +169,7 @@
             :convertToWebp="convertToWebp"
             :expire="uploadExpire"
             :expiryHint="expiryHint"
+            :albumExpire="albumExpire"
             class="upload"
             data-entry="up"
         />
@@ -238,6 +239,8 @@
             v-model:serverCompress="serverCompress"
             v-model:expire="expire"
             :fileExpiry="fileExpiry"
+            v-model:albumExpire="albumExpire"
+            :albumShare="userConfig.albumShare"
         />
     </div>
     <Footer class="footer"/>
@@ -290,6 +293,7 @@ export default {
             customUrlPrefix: '', //自定义链接前缀
             useCustomUrl: 'false', //是否启用自定义链接格式
             autoRetry: true, //失败自动切换
+            albumExpire: '',
             expire: '', // 文件有效期选项
             useDefaultWallPaper: false,
             uploadMethod: 'default', //上传方式

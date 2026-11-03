@@ -211,6 +211,7 @@ const output = `/**
 ${imports}
 // --- Worker Cache 与定时任务 ---
 import { maybeServeFromCache } from './workerCache.js';
+import { cleanupAlbumVisits } from '../../functions/utils/albumVisits.js';
 import { runExpiryCleanupJob } from '../../functions/utils/fileExpiryService.js';
 
 // ==================== 自动生成的路由表 ====================
@@ -344,9 +345,10 @@ export default {
         return await maybeServeFromCache(request, ctx, () => executeChain(middlewares, handler, context), isCachedServable);
     },
 
-    // 文件有效期清理：仅在部署时配置了 EXPIRY_CLEANUP_CRON 后由 Cron Trigger 触发
+    // 分享访问记录与文件有效期清理：默认每 10 分钟触发，可通过 EXPIRY_CLEANUP_CRON 调整
     // 后台入口不经过 functions/_middleware.js，由 runExpiryCleanupJob 显式标记平台
     async scheduled(controller, env, ctx) {
+        ctx.waitUntil(cleanupAlbumVisits(env));
         ctx.waitUntil(runExpiryCleanupJob(env, 'worker', ctx.waitUntil.bind(ctx)).then(result => {
             console.log(\`Expired files cleanup: \${JSON.stringify(result)}\`);
         }));

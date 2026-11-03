@@ -1,5 +1,16 @@
 <template>
     <el-dialog :title="$t('uploadSettings.title')" v-model="visible" :width="dialogWidth" :show-close="false" class="settings-dialog settings-dialog-scope upload-settings-dialog">
+        <div class="dialog-section">
+            <div class="section-header"><span class="section-title">{{ $t('albumSharing.expiry') }}</span></div>
+            <div class="section-content">
+                <el-select :model-value="albumExpire || '__default'" @update:model-value="$emit('update:albumExpire', $event === '__default' ? '' : $event)" filterable allow-create default-first-option :placeholder="$t('albumSharing.customHint')">
+                    <el-option :label="$t('albumSharing.defaultOption', { duration: albumShare.defaultExpire || '3d' })" value="__default" />
+                    <el-option v-for="value in ['1h', '1d', '3d', '7d', '30d']" :key="value" :label="value" :value="value" />
+                </el-select>
+                <p>{{ $t('albumSharing.uploadHint') }}</p>
+                <el-alert v-if="albumShare.enabled === false" :title="$t('albumSharing.paused')" :closable="false" type="warning" />
+            </div>
+        </div>
         <!-- 上传渠道 -->
         <div class="dialog-section">
             <div class="section-header">
@@ -240,6 +251,8 @@ export default {
         }
     },
     props: {
+        albumExpire: { type: String, default: '' },
+        albumShare: { type: Object, default: () => ({ defaultExpire: '3d', enabled: true }) },
         modelValue: { type: Boolean, default: false },
         uploadChannel: { type: String, default: 'telegram' },
         channelName: { type: String, default: '' },
@@ -257,6 +270,7 @@ export default {
         fileExpiry: { type: Object, default: undefined }
     },
     emits: [
+        'update:albumExpire',
         'update:modelValue',
         'update:uploadChannel',
         'update:channelName',

@@ -6,6 +6,7 @@ describe('deployment runtime', () => {
     for (const runtime of ['pages', 'worker', 'node']) {
         it(`sets ${runtime} from the entry context and exposes it to the frontend`, async () => {
             const userConfig = await loadFunction('functions/api/userConfig.js', {
+                getAlbumPolicy: async () => ({ enabled: true, defaultExpire: '3d' }),
                 fetchPageConfig: async () => ({ config: [{ id: 'serverRuntime', value: 'incorrect' }] }),
                 fetchUploadConfig: async () => ({}),
             });

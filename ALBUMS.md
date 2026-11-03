@@ -1,5 +1,44 @@
 # 批量图片文件夹 / Batch image folders
 
+
+## 分享有效期与访问记录（2026-11-04）
+
+管理入口：**系统设置 → 文件夹分享**。支持全站分享开关、默认有效期、IP 记录开关、分页分享列表、复制文件夹链接、单独关闭/恢复、修改有效期及查看访问记录。
+
+- 新分享默认 `3d`（创建时起算 72 小时）。上传设置支持 `1h / 1d / 3d / 7d / 30d` 和自定义正整数 `m/h/d`，范围 1 分钟至 365 天。留空使用服务器默认值。
+- 用户只可在创建时选择有限时长；创建后不能续期或设置永久。更换链接不续期。管理员可输入有限时长（从修改时重新计时）或 `forever`（永久）；全局默认值始终为有限时长。
+- 总开关关闭后所有分享暂停访问，期间继续计时。重新打开后，已过期或单独关闭的链接不会恢复。管理员单独关闭后，用户不能自行开启。
+- 分享过期返回 HTTP 410，关闭/暂停返回 404。分页也校验状态。文件和图片直链不受分享关闭/到期影响，文件自身有效期仍独立生效。
+- 升级后的第一个配置/分享请求初始化一次全站升级时间 `manage@albumShareUpgrade`，所有历史无到期时间的分享统一按该时间加 72 小时处理；不是按每个分享的首次访问计时。升级完成后立即打开后台一次以初始化，后台设置改变和后续重启不重置此时间。D1 使用 `INSERT OR IGNORE` 处理并发初始化。
+- 管理员控制单独保存在 `manage@albumControl@<id>`，防止并发用户重命名/更换链接覆盖管理员禁用或有效期。沿用现有 settings 表，无需迁移建表。
+
+### IP 记录与清理
+
+IP 记录**默认关闭**。开启后仅在分享首页列表成功响应时记录；同一文件夹/IP 合并为最近一次访问，不统计分页加载和图片直链。关闭停止新增，不删除仍在 24 小时内的记录。公开接口不返回访客记录，查询需要管理权限。
+
+- KV：记录使用 86400 秒 TTL；查询再次过滤 24 小时窗口。KV 原有最终一致性仍适用，跨地区开关、记录和首次升级时间可能存在传播延迟；需要严格及时控制时使用 D1。
+- D1：访问查询严格过滤并清理超时记录；写入记录也清理。Worker 的默认 Cron 为每 10 分钟一次，自动清理数据库中的过期记录，即使没有访问或记录开关已经关闭；物理删除可能延迟至下一次定时任务。自定义部署请保留 Cron，`EXPIRY_CLEANUP_CRON` 可调整间隔。
+- Docker：单独的 1 分钟定时器负责清理访问记录，不受文件清理开关影响。
+- Pages + D1：后台请求及新访问会清理；如需无流量时也清理，使用外部定时任务携带管理权限 Token 调用 `POST /api/manage/album-shares?action=cleanup`。Pages 没有原生 Cron；只有查询过滤不能保证无流量时的物理删除。
+- Worker/Pages 使用 Cloudflare 的 `CF-Connecting-IP`。Docker 默认使用连接地址；如部署在反向代理后，通过 `ALBUM_TRUSTED_PROXIES` 配置逗号分隔的可信代理 IP，且由代理**覆盖** `X-Real-IP`。只有连接来自名单中的代理时才使用该头，避免客户端伪造。
+
+### 新增 API
+
+所有 `/api/manage/album-shares` 请求沿用管理端认证及 `manage` 权限。
+
+| 请求 | 用途 |
+| --- | --- |
+| `POST /api/albums`，`{ "name": "名称", "expire": "3d" }` | 创建分享；expire 可省略，返回 expiresAt（毫秒时间戳） |
+| `GET /api/manage/album-shares?action=settings` | 获取总开关、默认时长、IP 开关及统一升级时间 |
+| `PATCH /api/manage/album-shares?action=settings`，`{ "enabled": true, "defaultExpire": "3d", "recordIp": false }` | 保存全局配置 |
+| `GET /api/manage/album-shares?cursor=…` | 分页列出分享及状态，每页 20 个，不返回管理密钥 |
+| `PATCH /api/manage/album-shares`，`{ "id": "…", "adminDisabled": true }` | 管理员关闭；false 恢复，但不续期 |
+| `PATCH /api/manage/album-shares`，`{ "id": "…", "expire": "7d" }` | 管理员修改时长；forever 为永久 |
+| `GET /api/manage/album-shares?action=visits&id=…&cursor=…` | 最近 24 小时访客记录，按 IP 分页，每页 50 个 |
+| `POST /api/manage/album-shares?action=cleanup` | 清理 D1 过期访问记录 |
+
+前端源代码与构建产物须一同交付。本次验证：后端 282 项、前端 255 项通过；前端生产构建、Worker dry-run、Pages Functions 编译、21 个模块导入、定时清理测试和本地 Worker + D1/R2 smoke 均通过。浏览器已检查后台列表、访问记录弹窗和上传默认有效期显示；尚未部署线上。
+
 ## 使用方式
 
 - 在首页一次选择、拖入或粘贴两张及以上本地图片，自动创建一个文件夹，图片使用 R2 上传。同一批次压缩、分块上传和失败重试均保留该文件夹。

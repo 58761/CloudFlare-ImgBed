@@ -259,8 +259,15 @@ D1Database.prototype.listSettings = function(options) {
     var params = [];
 
     if (prefix) {
-        query += ' WHERE key LIKE ?';
-        params.push(prefix + '%');
+        // Literal indexed prefix range, including long album/IP namespaces.
+        // D1 limits LIKE/GLOB pattern length; '%' and '_' must not be wildcards.
+        query += ' WHERE key >= ?';
+        params.push(prefix);
+        const upper = prefixUpperBound(prefix);
+        if (upper !== null) {
+            query += ' AND key < ?';
+            params.push(upper);
+        }
     }
 
     // 与 listFiles 一致返回 cursor，否则超过 limit 的键（如大量会话）会让后面的设置永远读不到

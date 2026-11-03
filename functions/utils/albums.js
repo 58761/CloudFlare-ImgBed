@@ -2,6 +2,7 @@ import { getDatabase } from './databaseAdapter.js';
 import { isExpired } from './fileExpiryHelpers.js';
 import { getFileTypeCategory, resolveFileType } from './mimeTypes.js';
 import { unicodeOrigin } from './unicodeOrigin.js';
+import { getAlbumPolicy, albumDuration, effectiveAlbum, albumState } from './albumPolicy.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const recordKey = id => `manage@album@${id}`;
@@ -21,8 +22,11 @@ export async function hashAlbumKey(key) {
 
 export async function readAlbum(env, id) {
     if (!UUID.test(id || '')) return null;
-    const value = await getDatabase(env).get(recordKey(id));
-    return value ? JSON.parse(value) : null;
+    const db = getDatabase(env);
+    const value = await db.get(recordKey(id));
+    if (!value) return null;
+    const controls = JSON.parse(await db.get(`manage@albumControl@${id}`) || '{}');
+    return effectiveAlbum({ ...JSON.parse(value), ...controls }, await getAlbumPolicy(env));
 }
 
 export async function saveAlbum(env, album) {
@@ -33,11 +37,14 @@ export function albumView(album, origin) {
     return {
         id: album.id, name: album.name, directory: album.directory,
         createdAt: album.createdAt, enabled: album.enabled,
+        expiresAt: album.expiresAt, adminDisabled: !!album.adminDisabled,
         shareUrl: `${unicodeOrigin(origin)}/album/${album.id}.${album.shareKey}`,
     };
 }
 
-export async function createAlbum(env, name = '') {
+export async function createAlbum(env, name = '', expire) {
+    const policy = await getAlbumPolicy(env);
+    const duration = albumDuration(expire === undefined ? policy.defaultExpire : expire);
     const id = crypto.randomUUID();
     const manageKey = crypto.randomUUID();
     const createdAt = Date.now();
@@ -45,7 +52,8 @@ export async function createAlbum(env, name = '') {
     const album = {
         id, name: name.trim() || day, createdAt,
         directory: `albums/${day}-${id}/`,
-        shareKey: crypto.randomUUID(), enabled: true,
+        shareKey: crypto.randomUUID(), enabled: true, adminDisabled: false,
+        expiresAt: createdAt + duration,
         manageKeyHash: await hashAlbumKey(manageKey),
     };
     await saveAlbum(env, album);
@@ -59,11 +67,14 @@ export async function ownedAlbum(env, request) {
     return album;
 }
 
-export async function sharedAlbum(env, share) {
+export async function sharedAlbum(env, share, includeUnavailable = false) {
     const parts = (share || '').split('.');
     if (parts.length !== 2 || !UUID.test(parts[1])) return null;
     const album = await readAlbum(env, parts[0]);
-    return album?.enabled && album.shareKey === parts[1] ? album : null;
+    if (!album || album.shareKey !== parts[1]) return null;
+    const policy = await getAlbumPolicy(env);
+    const state = albumState(album, policy);
+    return includeUnavailable || state === 'active' ? { ...album, state, recordIp: policy.recordIp } : null;
 }
 
 // Called only after the normal upload authentication and blocked-IP checks.

@@ -345,6 +345,9 @@ app.all('*', async (c, next) => {
             // 获取客户端真实 IP 并注入到请求 header 中
             // 因为 Node.js 环境没有 cf-connecting-ip 等 CDN header
             let request = c.req.raw;
+            const safeHeaders = new Headers(request.headers);
+            safeHeaders.delete('x-album-client-ip');
+            request = new Request(request, { headers: safeHeaders });
             try {
                 const info = getConnInfo(c);
                 let clientIp = info.remote?.address;
@@ -352,9 +355,12 @@ app.all('*', async (c, next) => {
                 if (clientIp && clientIp.startsWith('::ffff:')) {
                     clientIp = clientIp.slice(7);
                 }
-                if (clientIp && !request.headers.get('x-real-ip')) {
+                if (clientIp) {
                     const newHeaders = new Headers(request.headers);
-                    newHeaders.set('x-real-ip', clientIp);
+                    if (!newHeaders.has('x-real-ip')) newHeaders.set('x-real-ip', clientIp);
+                    const trusted = (process.env.ALBUM_TRUSTED_PROXIES || '').split(',').map(ip => ip.trim());
+                    const forwarded = trusted.includes(clientIp) ? request.headers.get('x-real-ip') : null;
+                    newHeaders.set('x-album-client-ip', forwarded || clientIp);
                     request = new Request(request.url, {
                         method: request.method,
                         headers: newHeaders,
@@ -417,6 +423,10 @@ serve({
     console.log(`Data directory: ${DATA_DIR}`);
     console.log(`Mode: Docker (Native Node.js)`);
 });
+
+// Album visitor retention runs independently of file deletion settings.
+const { cleanupAlbumVisits } = await import(pathToFileURL(join(FUNCTIONS_DIR, 'utils', 'albumVisits.js')).href);
+setInterval(() => cleanupAlbumVisits(createEnv()).catch(() => console.error('Album visit cleanup failed')), 60000).unref();
 
 // ==================== 文件有效期清理 ====================
 

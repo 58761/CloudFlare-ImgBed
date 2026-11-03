@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { File } from 'node:buffer';
 import { loadFunction, memoryDatabase } from './helpers/loadFunction.js';
 import * as responses from '../functions/utils/apiResponse.js';
+import { albumDuration, effectiveAlbum } from '../functions/utils/albumPolicy.js';
 import { png } from './helpers/files.js';
 
 describe('upload', () => {
@@ -13,7 +14,7 @@ describe('upload', () => {
         waits = [];
         tools = await loadFunction('functions/upload/uploadTools.js', { getDatabase: () => db });
         const { UnauthorizedResponse } = await loadFunction('functions/utils/auth/userAuth.js');
-        const albumTools = await loadFunction('functions/utils/albums.js', { getDatabase: () => db });
+        const albumTools = await loadFunction('functions/utils/albums.js', { getDatabase: () => db, albumDuration, effectiveAlbum, getAlbumPolicy: async () => ({ defaultExpire: '3d', upgradedAt: Date.now() }) });
         mocks = {
             ...albumTools,
             ...tools,

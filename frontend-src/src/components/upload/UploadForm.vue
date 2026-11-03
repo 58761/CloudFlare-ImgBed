@@ -229,6 +229,7 @@ components: {
     UploadFileItem, AlbumBatches
 },
 props: {
+    albumExpire: { type: String, default: '' },
     selectedUrlForm: {
         type: String,
         default: 'url',
@@ -481,7 +482,7 @@ methods: {
     },
     async uploadLocalEntries(entries) {
         try {
-            const album = await createImageBatch(entries)
+            const album = await createImageBatch(entries, this.albumExpire)
             if (album) this.updateAlbumHistory(album)
         } catch {
             this.$message.error(this.$t('albums.createFailed'))

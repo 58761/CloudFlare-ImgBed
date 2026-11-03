@@ -1,5 +1,6 @@
 import { userAuthCheck } from '../utils/auth/userAuth.js';
 import { albumResponse, albumView, createAlbum, ownedAlbum, saveAlbum } from '../utils/albums.js';
+import { albumDuration } from '../utils/albumPolicy.js';
 
 export async function onRequest(context) {
     const { request, env } = context;
@@ -23,12 +24,19 @@ export async function onRequest(context) {
         }
         if (request.method === 'POST') {
             if (!env.img_r2) return albumResponse({ error: 'R2 binding img_r2 is required' }, 503);
-            const { album, manageKey } = await createAlbum(env, body.name);
+            if (body.expiresAt !== undefined || body.adminDisabled !== undefined) return albumResponse({ error: 'Administrator-only fields' }, 403);
+            try { if (body.expire !== undefined) albumDuration(body.expire); }
+            catch (error) { return albumResponse({ error: error.message }, 400); }
+            const { album, manageKey } = await createAlbum(env, body.name, body.expire);
             return albumResponse({ ...albumView(album, url.origin), manageKey }, 201);
         }
         const album = await ownedAlbum(env, request);
         if (!album) return albumResponse({ error: 'Album not found or invalid management key' }, 403);
         if (request.method === 'PATCH') {
+            if (body.expire !== undefined || body.expiresAt !== undefined || body.adminDisabled !== undefined) {
+                return albumResponse({ error: 'Only administrators can change share expiry' }, 403);
+            }
+            if (body.enabled === true && album.adminDisabled) return albumResponse({ error: 'Sharing disabled by administrator' }, 403);
             if (body.enabled !== undefined && typeof body.enabled !== 'boolean') return albumResponse({ error: 'Invalid enabled value' }, 400);
             if (body.rotate !== undefined && typeof body.rotate !== 'boolean') return albumResponse({ error: 'Invalid rotate value' }, 400);
             if (body.name !== undefined) {

@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { loadFunction, memoryDatabase } from './helpers/loadFunction.js';
 import { sqliteDatabase } from './helpers/database.js';
+import { albumDuration } from '../functions/utils/albumPolicy.js';
+import { recordAlbumVisit } from '../functions/utils/albumVisits.js';
 import * as albums from '../functions/utils/albums.js';
 
 describe('image folders', () => {
@@ -23,10 +25,10 @@ describe('image folders', () => {
         env = { img_url: memoryDatabase(), img_r2: {} };
         authorized = true;
         manage = await loadFunction('functions/api/albums.js', {
-            ...albums, userAuthCheck: async (_env, _url, _request, permission) => authorized && permission === 'upload',
+            ...albums, albumDuration, userAuthCheck: async (_env, _url, _request, permission) => authorized && permission === 'upload',
         });
         publicRoute = await loadFunction('functions/api/album-share.js', {
-            ...albums, fetchSecurityConfig: async () => ({ access: {} }),
+            ...albums, recordAlbumVisit, fetchSecurityConfig: async () => ({ access: {} }),
         });
     });
     const headers = album => ({ 'X-Album-Id': album.id, 'X-Album-Key': album.manageKey });

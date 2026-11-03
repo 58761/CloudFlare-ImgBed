@@ -24,10 +24,10 @@ export function saveAlbums(albums) {
     try { localStorage.setItem(HISTORY_KEY, JSON.stringify(albums.slice(0, 100))) } catch { /* Private browsing / full storage. */ }
 }
 
-export async function createImageBatch(entries) {
+export async function createImageBatch(entries, expire) {
     const images = entries.filter(({ file }) => getFileTypeCategory(resolveFileType(file.name, file.type)) === 'image')
     if (images.length < 2) return null
-    const { data: album } = await axios.post('/api/albums', {}, { withAuthCode: true })
+    const { data: album } = await axios.post('/api/albums', expire ? { expire } : {}, { withAuthCode: true })
     for (const { file } of images) file.album = album
     return album
 }

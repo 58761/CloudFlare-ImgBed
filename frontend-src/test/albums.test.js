@@ -7,6 +7,7 @@ import AlbumBatches from '@/components/upload/AlbumBatches.vue'
 import { ensureFileType } from '@/utils/mimeTypes'
 import UploadForm from '@/components/upload/UploadForm.vue'
 import AlbumShare from '@/views/AlbumShare.vue'
+import AlbumShareSettings from '@/components/config/AlbumShareSettings.vue'
 
 describe('image folders', () => {
     const album = { id: 'folder-id', manageKey: 'private-key', directory: 'albums/batch/', shareUrl: 'https://test/album/share', enabled: true }
@@ -42,6 +43,30 @@ describe('image folders', () => {
         expect(batch[2].file.album).toBeUndefined()
         expect(await createImageBatch([batch[0]])).toBeNull()
         expect(axios.post).toHaveBeenCalledTimes(1)
+    })
+    it('sends the selected finite lifetime only when creating a batch', async () => {
+        await createImageBatch(entries(), '90m')
+        expect(axios.post).toHaveBeenCalledWith('/api/albums', { expire: '90m' }, { withAuthCode: true })
+        expect(axios.patch).not.toHaveBeenCalled()
+    })
+    it('clears all images on expiry, including previously loaded pages', async () => {
+        const vm = { ...AlbumShare.data(), files: [{ id: 'old' }], cursor: 'next', $route: { params: { share: 'share' } }, $t: key => key }
+        axios.get.mockRejectedValueOnce({ response: { status: 410 } })
+        await AlbumShare.methods.load.call(vm)
+        expect(vm.files).toEqual([])
+        expect(vm.cursor).toBeNull()
+        expect(vm.error).toBe('albumSharing.expired')
+    })
+    it('prevents copying revoked or expired shares in the owner panel', () => {
+        expect(AlbumBatches.methods.canShare({ ...album, adminDisabled: true })).toBe(false)
+        expect(AlbumBatches.methods.canShare({ ...album, expiresAt: Date.now() - 1 })).toBe(false)
+        expect(AlbumBatches.methods.canShare({ ...album, expiresAt: null })).toBe(true)
+    })
+    it('copies the server-generated folder link from the administrator screen', async () => {
+        const writeText = vi.fn().mockResolvedValue(undefined)
+        vi.stubGlobal('navigator', { clipboard: { writeText } })
+        await AlbumShareSettings.methods.copy.call({ $message: { success: vi.fn(), error: vi.fn() }, $t: key => key }, album)
+        expect(writeText).toHaveBeenCalledWith(album.shareUrl)
     })
     it('keeps simultaneous selections independent and does not silently upload when folder creation fails', async () => {
         axios.post.mockResolvedValueOnce({ data: album }).mockResolvedValueOnce({ data: { ...album, id: 'second' } })

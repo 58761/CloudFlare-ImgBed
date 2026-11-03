@@ -10,7 +10,7 @@
  *   WORKER_VARS      - JSON 对象，值可直接填写或使用 { value, type: 'text' | 'secret' }
  *                     type 默认 text；secret 单独生成文件供部署后批量上传
  *   WRANGLER_CONFIG - 可选，追加 Wrangler 配置的 JSON 对象
- *   EXPIRY_CLEANUP_CRON - 可选，文件有效期清理的 Cron 表达式（5 段格式，如每 30 分钟一次），不填则不生成定时任务
+ *   EXPIRY_CLEANUP_CRON - 可选，文件有效期清理的 Cron 表达式（5 段格式，如每 30 分钟一次），不填默认每 10 分钟清理（包含文件夹访问 IP 记录）
  */
 
 import { appendFileSync, writeFileSync } from 'fs';
@@ -120,7 +120,7 @@ if (env.WORKER_VARS) {
 }
 
 // 文件有效期清理的定时任务，只接受 5 段 Cron 表达式
-const expiryCron = (env.EXPIRY_CLEANUP_CRON || '').trim();
+const expiryCron = (env.EXPIRY_CLEANUP_CRON || '*/10 * * * *').trim();
 if (expiryCron && !/^[0-9A-Za-z*\/,#?-]+(\s+[0-9A-Za-z*\/,#?-]+){4}$/.test(expiryCron)) {
     console.error('Error: EXPIRY_CLEANUP_CRON must be a 5-field cron expression, for example "*/30 * * * *".');
     process.exit(1);
