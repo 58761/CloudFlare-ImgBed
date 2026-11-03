@@ -1,0 +1,48 @@
+<div align="center">
+    <a href="https://github.com/MarSeventh/CloudFlare-ImgBed">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="readme/animated-banner-dark.apng" />
+            <source media="(prefers-color-scheme: light)" srcset="readme/animated-banner-light.apng" />
+            <img width="80%" alt="CloudFlare ImgBed 动画 Logo" src="readme/animated-banner-light.apng" />
+        </picture>
+    </a>
+    <p><em>🗂️ 打破图床边界，构建你的专属开源文件托管引擎。</em></p>
+    <p>
+        <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README_zh.md">简体中文</a> &nbsp;·&nbsp; <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/README.md">English</a> &nbsp;·&nbsp; <a href="https://cfbed.sanyue.de">官方网站</a> &nbsp;·&nbsp; <a href="https://t.me/sanyue_club">Telegram 频道</a>
+    </p>
+    <p align="center">
+        <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MarSeventh/CloudFlare-ImgBed" alt="License" /></a>
+        <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/releases"><img src="https://img.shields.io/github/release/MarSeventh/CloudFlare-ImgBed" alt="latest version" /></a>
+        <a href="https://hub.docker.com/r/marseventh/cloudflare-imgbed"><img src="https://img.shields.io/docker/pulls/marseventh/cloudflare-imgbed" alt="Docker Pulls" /></a>
+        <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/stargazers"><img src="https://img.shields.io/github/stars/MarSeventh/CloudFlare-ImgBed" alt="Stars" /></a>
+        <a href="https://github.com/MarSeventh/CloudFlare-ImgBed/network/members"><img src="https://img.shields.io/github/forks/MarSeventh/CloudFlare-ImgBed" alt="Forks" /></a>
+        <a href="https://t.me/sanyue_club"><img src="https://img.shields.io/badge/-Sanyue-26A5E4?logo=telegram&logoColor=white" alt="Telegram Sanyue" /></a>
+    </p>
+    <p align="center">
+        <a href="https://trendshift.io/repositories/14324" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14324" alt="GitHub Trending" width="250" /></a>
+        <a href="https://atomgit.com/MarSeventh/CloudFlare-ImgBed" target="_blank"><img src="https://atomgit.com/MarSeventh/CloudFlare-Imgbed/star/new_badge.svg" alt="G-star" width="250" /></a>
+        <a href="https://hellogithub.com/repository/MarSeventh/CloudFlare-ImgBed" target="_blank"><img src="https://api.hellogithub.com/v1/widgets/recommend.svg?rid=71d65ace215945b0909d4c75c31b9fcb&claim_uid=6DsuqF4hInJWerv&theme=neutral" alt="Featured｜HelloGitHub" width="250" /></a>
+    </p>
+</div>
+
+
+
+
+
+----
+# sanyue_imghub
+
+### 本仓库为[MarSeventh/CloudFlare-ImgBed](https://github.com/MarSeventh/CloudFlare-ImgBed)项目的前端仓库，详细介绍及部署方式请移步该仓库。
+
+## Deployment
+
+如果要在**完整项目基础上定制前端**，只需要四步（**前提是你需要有基本的`git`、`nodejs`等工具的使用能力**）：
+
+1. 将`CloudFlare-ImgBed`拉取到本地，`npm install`安装依赖，`npm run start`启动项目（作为后端服务运行）
+2. 将该前端项目拉取到本地，`npm install`，修改环境变量`.env.development`中的`VUE_APP_BACKEND_URL`为你本地后端服务的URL（默认无需修改）
+3. 进行DIY，然后`npm run build`，进入打包好的`/dist`目录，将里面的所有内容复制到`CloudFlare-ImgBed`项目的根目录
+4. 将修改好的`CloudFlare-ImgBed`项目部署上去即可，具体方法参照完整项目的文档
+
+## TIPS
+
+**如果觉得项目不错希望您能给个免费的star✨✨✨，非常感谢！**

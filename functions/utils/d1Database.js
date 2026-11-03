@@ -8,6 +8,17 @@ class D1Database {
     }
 }
 
+// Prefix ranges use the primary-key index and avoid D1's short LIKE-pattern
+// limit. Unlike LIKE, '%' and '_' in a directory are literal characters.
+function prefixUpperBound(prefix) {
+    const points = Array.from(prefix);
+    while (points.length) {
+        const last = points.pop().codePointAt(0);
+        if (last < 0x10ffff) return points.join('') + String.fromCodePoint(last + 1);
+    }
+    return null;
+}
+
 // ==================== 文件操作 ====================
 
 /**
@@ -96,8 +107,13 @@ D1Database.prototype.listFiles = function(options) {
     var params = [];
     
     if (prefix) {
-        query += ' WHERE id LIKE ?';
-        params.push(prefix + '%');
+        query += ' WHERE id >= ?';
+        params.push(prefix);
+        const upper = prefixUpperBound(prefix);
+        if (upper !== null) {
+            query += ' AND id < ?';
+            params.push(upper);
+        }
     }
     
     if (cursor) {

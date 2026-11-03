@@ -36,8 +36,12 @@ export async function handleChunkMerge(context) {
         }
 
         const sessionInfo = JSON.parse(sessionData);
+        if ((sessionInfo.albumId || null) !== (context.album?.id || null)) {
+            return createResponse('Error: Album upload session mismatch', { status: 403 });
+        }
         // 未重复发送类型时沿用会话中的明确类型，再对通用值按文件名兜底。
         originalFileType = resolveFileType(originalFileName, originalFileType || sessionInfo.originalFileType);
+        if (context.album) originalFileType = sessionInfo.originalFileType;
 
         // 验证会话信息
         if (sessionInfo.originalFileName !== originalFileName ||

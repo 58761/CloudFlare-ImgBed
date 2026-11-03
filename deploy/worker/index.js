@@ -54,6 +54,8 @@ import * as apiPublicList from '../../functions/api/public/list.js';
 import * as uploadHuggingfaceCommitUpload from '../../functions/upload/huggingface/commitUpload.js';
 import * as uploadHuggingfaceCompleteMultipart from '../../functions/upload/huggingface/completeMultipart.js';
 import * as uploadHuggingfaceGetUploadUrl from '../../functions/upload/huggingface/getUploadUrl.js';
+import * as apiAlbumShare from '../../functions/api/album-share.js';
+import * as apiAlbums from '../../functions/api/albums.js';
 import * as apiChannels from '../../functions/api/channels.js';
 import * as apiDirectoryTree from '../../functions/api/directoryTree.js';
 import * as apiFetchRes from '../../functions/api/fetchRes.js';
@@ -114,6 +116,8 @@ const routes = [
     { path: '/upload/huggingface/commitUpload', module: uploadHuggingfaceCommitUpload, middlewares: [mw_root, mw_upload] },
     { path: '/upload/huggingface/completeMultipart', module: uploadHuggingfaceCompleteMultipart, middlewares: [mw_root, mw_upload] },
     { path: '/upload/huggingface/getUploadUrl', module: uploadHuggingfaceGetUploadUrl, middlewares: [mw_root, mw_upload] },
+    { path: '/api/album-share', module: apiAlbumShare, middlewares: [mw_root, mw_api] },
+    { path: '/api/albums', module: apiAlbums, middlewares: [mw_root, mw_api] },
     { path: '/api/channels', module: apiChannels, middlewares: [mw_root, mw_api] },
     { path: '/api/directoryTree', module: apiDirectoryTree, middlewares: [mw_root, mw_api] },
     { path: '/api/fetchRes', module: apiFetchRes, middlewares: [mw_root, mw_api] },

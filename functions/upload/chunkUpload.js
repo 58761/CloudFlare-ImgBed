@@ -6,7 +6,7 @@ import { DiscordAPI } from '../utils/storage/discordAPI';
 import { CreateMultipartUploadCommand, UploadPartCommand, AbortMultipartUploadCommand } from "@aws-sdk/client-s3";
 import { getDatabase, checkDatabaseConfig } from '../utils/databaseAdapter.js';
 import { fetchPageConfig } from '../utils/sysConfig.js';
-import { resolveFileType } from '../utils/mimeTypes.js';
+import { resolveFileType, getFileTypeCategory } from '../utils/mimeTypes.js';
 
 // 初始化分块上传
 export async function initializeChunkedUpload(context) {
@@ -19,6 +19,9 @@ export async function initializeChunkedUpload(context) {
 
         const originalFileName = formdata.get('originalFileName');
         const originalFileType = resolveFileType(originalFileName, formdata.get('originalFileType'));
+        if (context.album && getFileTypeCategory(originalFileType) !== 'image') {
+            return createResponse('Error: Albums only accept images', { status: 400 });
+        }
         const totalChunks = parseInt(formdata.get('totalChunks'));
 
         if (!originalFileName || !originalFileType || !totalChunks) {
@@ -47,6 +50,7 @@ export async function initializeChunkedUpload(context) {
 
         // 存储上传会话信息
         const sessionInfo = {
+            albumId: context.album?.id || null,
             uploadId,
             originalFileName,
             originalFileType,
@@ -116,6 +120,9 @@ export async function handleChunkUpload(context) {
         }
 
         const sessionInfo = JSON.parse(sessionData);
+        if ((sessionInfo.albumId || null) !== (context.album?.id || null)) {
+            return createResponse('Error: Album upload session mismatch', { status: 403 });
+        }
 
         // 验证会话信息
         if (sessionInfo.originalFileName !== originalFileName ||
@@ -192,6 +199,11 @@ export async function handleCleanupRequest(context, uploadId, totalChunks) {
             return createResponse(JSON.stringify({
                 error: 'Missing uploadId parameter'
             }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+        }
+
+        const session = await getDatabase(context.env).get(`upload_session_${uploadId}`);
+        if (session && (JSON.parse(session).albumId || null) !== (context.album?.id || null)) {
+            return createResponse('Error: Album upload session mismatch', { status: 403 });
         }
 
         // 强制清理所有相关数据

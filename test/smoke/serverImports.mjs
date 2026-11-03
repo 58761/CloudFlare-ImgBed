@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 // Use the production server loader, without source rewriting or test mocks.
 // This catches extensionless imports and runtime dependencies missed by unit tests.
 const routes = [
+    ['../../functions/api/albums.js', 'onRequest'],
+    ['../../functions/api/album-share.js', 'onRequest'],
     ['../../functions/upload/index.js', 'onRequest'],
     ['../../functions/upload/chunkUpload.js', 'handleChunkUpload'],
     ['../../functions/upload/chunkMerge.js', 'handleChunkMerge'],

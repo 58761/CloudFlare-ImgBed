@@ -1,0 +1,96 @@
+# Frontend regression tests
+
+Tests are organized by functionality so that future changes can extend the relevant module instead of adding a separate suite for every bug fix.
+
+**Whenever tests or test helpers are added, removed, renamed or changed, update this README in the same PR.** Review the module overview, coverage limits and affected commands or helpers against the final change. Update the relevant descriptions rather than making unrelated wording changes just to touch this file.
+
+## Running the checks
+
+Use Node.js 22 and the existing lockfile from the frontend repository root:
+
+```sh
+npm ci
+npm test
+npm run build
+```
+
+For a single module or an interactive watch session:
+
+```sh
+npm test -- test/upload.test.js
+npm test -- test/auth.test.js
+npm test -- test/update.test.js -t "localStorage"
+npm run test:watch
+```
+
+Vitest discovers `test/**/*.test.js` and runs in `happy-dom`. The `@` alias resolves to `src/`; no backend server, cloud credentials or live service is required. An empty test selection fails instead of silently passing. Vue CLI remains responsible for the production build; Vitest does not replace the application build toolchain.
+
+## Module overview
+
+Production paths below are relative to `src/`; test helper links are relative to this directory.
+
+| Module | Test file | Entry points | Covered behavior |
+| --- | --- | --- | --- |
+| Image folders | [albums.test.js](albums.test.js), [uploadFormat.test.js](uploadFormat.test.js) | `utils/upload/albums.js`, `components/upload/UploadForm.vue`, `views/AlbumShare.vue` | Unicode/Punycode share-link formatting and clipboard output, subdomains/ports and unchanged navigable URLs; one folder per multi-image selection, isolated simultaneous batches, creation-failure handling, credential preservation through MIME/conversion paths, R2 retry destination and headers, multipart cleanup with and without album credentials, local history, paginated gallery deduplication and revocation handling. HTTP is mocked; production build and browser checks cover template integration |
+| Test Web Storage | [webStorage.test.js](webStorage.test.js) | [helpers/setupWebStorage.js](helpers/setupWebStorage.js) | Missing/undefined globals, throwing accessors, unavailable storage methods, independent storage areas, and preservation of working storage and existing values |
+| Shared file types | [fileTypes.test.js](fileTypes.test.js) | `utils/mimeTypes.js` | MIME normalization and parameter preservation, explicit-type precedence, generic/empty MIME inference, strict media categories, consistent Ogg handling, record/legacy-history inputs, basename suffixes and legacy preview categories without inventing MIME for ambiguous extensions; upload MIME completion preserves bytes, names, timestamps, queue IDs and directory paths |
+| Upload preparation and file information | [upload.test.js](upload.test.js) | `components/upload/UploadForm.vue`, `components/upload/UploadFileItem.vue`, `utils/upload/directoryTraversal.js`, `utils/upload/urlBuilder.js`, `utils/upload/animatedImage.js` | Real upload preprocessing and history methods: MIME completion before compression, directory/queue preservation, RAW passthrough, explicit-type precedence and animated originals bypassing local and Telegram compression; original/final size tracking including WebP conversion, conversion-success tracking through compression with native/skipped/failed conversions excluded, normalized MIME labels, size formatting, actual size reductions with compact percentage labels beside the down-arrow icon and horizontal wheel scrolling at overflow boundaries; array/object upload results and HuggingFace commit results producing links/history, malformed-result rejection; directory traversal/fallbacks, result link formats, GIF frame parsing, bounded reads, WebP animation chunks and APNG frame counts |
+| Reading and querying | [read.test.js](read.test.js) | `utils/fileManager.js` | Local cache round trips and isolation, corrupt-cache recovery, encoded query parameters, server counts, pagination, unindexed warnings and failed requests preserving the cache |
+| Deletion | [delete.test.js](delete.test.js) | `utils/fileManager.js` | Local-cache file removal, idempotent missing-file removal and directory boundaries that preserve similarly named sibling folders |
+| Updates and validation | [update.test.js](update.test.js) | `utils/fileManager.js`, `utils/fileIdValidator.js`, `utils/pathValidator.js` | Unique file/folder additions, moving cached views, storage-quota fallback, stale-cache removal and one-time warnings; invalid IDs and paths, Unicode names and final validation versus input-time validation |
+| Authentication | [auth.test.js](auth.test.js) | `utils/fetchWithAuth.js`, `utils/tokenExpiration.js` | Session cookies, preserved request options, development proxy paths, deduplicated 401 navigation, 403 handling and network errors; UTC expiry calculation, invalid durations, exact expiry boundaries and legacy token defaults |
+| Batch retrieval | [batch.test.js](batch.test.js) | `utils/batchProcessor.js` | Encoded cursors, record values, cumulative progress, request signals, HTTP/API errors, cancellation and state reset |
+| Settings | [settings.test.js](settings.test.js) | `mixins/unsavedSettings.js` | Stable snapshots, nested and array edits, save, subsequent edits and revert |
+| File management links | [fileLinks.test.js](fileLinks.test.js), [fileLinkActions.test.js](fileLinkActions.test.js) | `utils/dashboard/fileLinks.js`, `components/dashboard/FileDetailDialog.vue`, `views/AdminDashBoard.vue` | Independent format and channel preferences, persistence, available sources and missing-source fallback, S3/CDN/WebDAV/external/custom URLs, raw Telegram IDs, tab/content changes and reset on reopen, temporary versus pinned toolbar expansion, responsive dialog/table columns, and real single/batch/recursive-folder copy methods including the clipboard fallback |
+| Dashboard selection | [selection.test.js](selection.test.js) | `utils/dashboard/useDragSelect.js`, `utils/dashboard/rectIntersects.js` | Reverse drags, intersection boundaries, replacing/appending selections, interactive targets, right clicks, mobile widths, view changes and listener cleanup on unmount |
+| AI tags | [ai.test.js](ai.test.js) | `utils/aiTags.js` | Authentication and structured errors, malformed responses, preview input guards with shared MIME inference and AI-specific format restrictions, automatic-upload setting serialization and historical defaults, fetching extensionless historical records, failed-preview isolation, multipart requests, response/file matching, apply batches and per-file save results |
+| Upload format restrictions | [uploadFormat.test.js](uploadFormat.test.js) | `components/config/FileFormatSettings.vue`, `components/config/SysCogUpload.vue`, `components/upload/UploadForm.vue`, `utils/upload/fileFormat.js` | Placement after channels and before expiry; shared bulleted tooltips; whitelist/blacklist controls, editable preset groups, extension normalization and validation; empty-whitelist rejection; one shared save action for format and expiry, serialized saves and failure handling; saving preserves the latest channels and expiry settings, in-flight edits and failed drafts; localized server rejection, stopping automatic/chunk retries while preserving manual retries and cleanup |
+| File expiry | [fileExpiry.test.js](fileExpiry.test.js) | `utils/fileExpiry.js`, `components/config/FileExpirySettings.vue`, `components/config/SysCogUpload.vue`, `components/config/SysCogOthers.vue`, `components/dashboard/FileDetailDialog.vue`, `components/dashboard/FileCard.vue`, `components/dashboard/FileListItem.vue`, `components/upload/UploadSettingsDialog.vue`, `views/UploadHome.vue`, `views/AdminDashBoard.vue` | Option format matching the backend, sorting and display; green, yellow (within 24 hours) and red expiry indicators, refreshed while cards and list rows remain open; the backend support signal (`fileExpiry` present, `enabled` on or off) versus the platform flag; which `expire` value uploads send and the effective-expiry hint; settings option edits keeping the default valid and rejecting invalid/empty/oversized lists; custom defaults added to available choices and saved for uploads, with invalid values and option limits enforced; expiry settings after upload channels and format restrictions, and absent from Other Settings, preserving the latest channel settings on save through the upload-settings API, omitting expiry from Other Settings saves, and retaining drafts on failures or edits during a save. Rendered templates: the detail-dialog expiry row hidden for backends without the feature, editable while supported even when turned off, read-only for expired files; edit state and draft reset when switching files or closing; one metadata save per file at a time (expiry and name/type share the lock), kept through cancel and switching away and back, with the picker disabled meanwhile; a name/type save returning after switching files leaves the current file's editing and saving state alone; a save that returns after switching files only updates its own record and names it in the toast; 409 for files that expired meanwhile; separate question-mark tooltips for expiry behavior and cleanup, with platform-specific cleanup guidance and the pending count visible; partial-failure and remaining-files feedback after manual cleanup; the upload expiry choice after filename format, only when uploaders may choose. Clearing a cached expiry from list and detail records |
+| Locales | [locales.test.js](locales.test.js) | `locales/index.js` | Stored preference, unsupported-language fallback, document language initialization and persisted language changes |
+| Duplicate scan | [dupScanUi.test.js](dupScanUi.test.js) | `components/config/SysCogStatus.vue` | Report dialog binding and help tooltips; complete/partial results and index changes; capability probes; HTTP and malformed-response errors; repeated-trigger protection; confirmed deletion through the existing API, exact file IDs, cancellation/failure preservation, missing files, report regrouping, cache updates and statistics-refresh failure handling |
+
+Extend the existing suite for a related behavior. Add a separate file for a substantial independent feature and document its production entry points, assertions and remaining limits here. Test counts come from the runner; this document describes scope rather than maintaining a fixed count.
+
+## Helpers and isolation
+
+- [helpers/setupWebStorage.js](helpers/setupWebStorage.js) runs before each suite. It checks `localStorage` and `sessionStorage` and supplies independent in-memory fallbacks when access or the read/write probe fails, preserving working storage and existing values.
+- [helpers/fileManager.js](helpers/fileManager.js) resets the real file-manager singleton and local storage before each cache test. It replaces authenticated requests, warning notifications and translation text at their boundaries; assertions still exercise the real cache/query implementation.
+- Authentication tests use the real request wrapper with a mocked browser `fetch`, router and store. Other request-oriented suites replace `fetchWithAuth` to test their own request construction and response handling.
+- Selection tests mount a small Vue component around the real composable, dispatch DOM mouse events and supply explicit element rectangles. They unmount the component and clean the document after each test.
+- Vitest restores spies and unstubs globals/environment variables between tests. Suites also reset their own mock calls, local storage, module state or mounted components as needed.
+- AI suggestion tests supply a preview-preparation function where browser image decoding would otherwise be required. This isolates batching and result validation from canvas support.
+- [helpers/renderTemplate.js](helpers/renderTemplate.js) compiles a component's real template and mounts it with the real script options and reactive props. Element Plus and child components become stubs that render every slot inline and pass attributes through, so tests can assert which rows, buttons and tooltip texts are present. It does not reproduce Element Plus behavior or layout.
+- [helpers/vueScriptPlugin.js](helpers/vueScriptPlugin.js) compiles real SFC scripts for method tests without rendering templates. Upload preprocessing tests replace the image encoder, child preview component and object-URL creation; the upload method, MIME completion and animation detector run unchanged. File-information tests load the real child component script to exercise computed values and wheel handling. Vue CLI checks complete templates in the production build.
+- File-link tests mount the real detail-dialog script with a null render function or minimal DOM refs to exercise reactive props, computed values, viewport changes and lifecycle watchers, including portrait/landscape layouts, loaded image/video dimensions, compact audio/file layouts, failed-preview fallback, scroll reset, retained dimensions on reopen without another load event, cached-node dimension recovery and rejection of detached media events. Copy-action tests mock authenticated requests and clipboard access, and invoke the real dashboard methods with mixed-channel records and recursive folder responses.
+- Preview loading regressions in `fileLinks.test.js` distinguish video metadata from a usable frame, retain readiness on cached reopen, reset readiness on file changes and ignore stale ready/error callbacks. [detailPreviewMotion.test.js](detailPreviewMotion.test.js) exercises `utils/dashboard/detailPreviewMotion.js` with controlled rectangles and animation promises: synchronized panels, style restoration, cancellation, obsolete snapshots and reduced-motion/detached layouts. Actual shimmer appearance, browser animation timing and media decoding still require browser checks.
+- Metadata column-switch regressions compile the real detail-dialog template and render real Element Plus descriptions and tags, stubbing unrelated dialog controls. They verify that switching from landscape to portrait does not leave the old access badge in the dimensions cell, covering both known dimensions and the no-dimensions placeholder; browser checks measure the resulting position and height stability.
+
+## Current coverage limits
+
+- Web Storage tests simulate unavailable globals in isolated Node VM contexts. They do not run a Node version/flag matrix or test browser storage events, quotas or property access such as `storage.keyName`.
+- Upload tests exercise preprocessing/history and upload-success methods, file-information values, wheel-event handling, preparation, animation detection and link generation, not complete component rendering, multipart transport, provider failover or interrupted-upload recovery. Savings labels describe local size reductions; tests do not infer provider compression results. Animation fixtures exercise container structure without decoding pixels or checking playback; encoder and Telegram behavior are not tested against real services. Shared file-type tests do not mount each preview component or verify browser codec support. MIME mappings follow the main repository with frontend APNG support; legacy preview hints remain separate from MIME inference. Tests do not require a sibling checkout.
+- Delete/update tests cover frontend cache behavior and validation. They do not verify that UI actions send correct backend deletion, rename or move requests, or that remote files are changed. Backend API regressions are maintained in the main repository.
+- Reading tests cover the file-manager utility, not full dashboard rendering, all filters or every store/component integration.
+- File-link regressions verify generated values, saved preferences and copy-action results. They do not establish that a provider URL is publicly reachable, test real clipboard permissions, or render toolbar animation, tooltip colors and table styling. Responsive visual layout, Chinese/English text, light/dark themes and touch behavior still require browser checks.
+- Authentication tests do not mount login pages or exercise real backend sessions. Settings tests cover the shared unsaved-settings mixin, not every settings form or save API.
+- `happy-dom` does not reproduce browser layout. Selection geometry is supplied by the test; scrolling, touch gestures, visual appearance and full browser interactions still require browser validation.
+- AI tests stub image decoding and canvas output; they do not verify actual browser codecs, compression quality, live providers or the complete AI dialog. Locale tests protect locale selection, not translation completeness.
+- File-expiry rendering tests use stubbed Element Plus components: they check template conditions, state and messages, not the date picker, tooltip positioning or styles. They do not check that every upload request (single, chunked, HuggingFace) carries the parameter; the backend validates it on each path. English, narrow-screen and dark-theme layouts were checked manually in a browser against the Docker backend, not in CI.
+- These checks are utility/composable regressions and a production build, not a complete browser end-to-end suite. There are no live cloud requests or deployment checks.
+
+Keep these limits explicit until corresponding tests exist. A passing CI run does not establish coverage of every UI operation or deployment environment.
+
+## Extending the suite
+
+1. Select the module by user-visible behavior. Cover normal inputs, failure paths and compatibility boundaries, especially when fixing a regression.
+2. Execute the real implementation under test. Mock external boundaries rather than replacing the logic that the assertion is meant to protect.
+3. Assert observable results: returned values, request paths/options, cache contents, warnings, navigation or selection state. Include failure cases that must preserve existing state.
+4. Keep tests independent and repeatable. Reset shared state and clean listeners, mounted apps and globals. Avoid live services, private credentials and arbitrary delays.
+5. **Update this README in the same PR**, including affected coverage limits and helper descriptions. Changes to discovery, dependencies or commands also require the corresponding configuration and CI updates.
+6. Run the affected suite, then `npm test` and `npm run build`. Report actual results and any manual/browser checks in the PR.
+
+## CI
+
+`.github/workflows/check_pr.yml` runs for PRs targeting `dev` or `master`, pushes to those branches and manual dispatches. It installs locked dependencies on Node.js 22, runs the regression suite, builds the Vue application and checks that `dist/index.html` is nonempty. It cancels superseded runs and requires no deployment secrets.
+
+CI supports code review. UI or browser-specific changes should also describe the relevant manual checks and include screenshots or recordings when useful.

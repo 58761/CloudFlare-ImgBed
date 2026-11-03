@@ -440,6 +440,9 @@ export async function buildUniqueFileId(context, fileName, fileType = 'applicati
     // 处理文件名，移除特殊字符
     fileName = sanitizeFileName(fileName);
 
+    // Independent requests must not race on the same original filename in a batch.
+    if (context.album) return `${normalizedFolder}/${crypto.randomUUID()}.${fileExt}`;
+
     const unique_index = Date.now() + Math.floor(Math.random() * 10000);
     let baseId = '';
 

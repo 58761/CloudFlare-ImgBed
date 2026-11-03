@@ -16,6 +16,7 @@ import { WebDAVAPI } from "../utils/storage/webdavAPI";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getDatabase } from '../utils/databaseAdapter.js';
 import { resolveUploadExpiry } from '../utils/fileExpiryService.js';
+import { prepareAlbumUpload } from '../utils/albums.js';
 
 
 export async function onRequest(context) {  // Contents of context object
@@ -44,6 +45,11 @@ export async function onRequest(context) {  // Contents of context object
     const isBlockedIp = await isBlockedUploadIp(env, uploadIp);
     if (isBlockedIp) {
         return createResponse('Error: Your IP is blocked', { status: 403 });
+    }
+
+    if (request.headers.has('X-Album-Id')) {
+        const albumError = await prepareAlbumUpload(context);
+        if (albumError) return albumError;
     }
 
     // 检查是否为清理请求
@@ -148,6 +154,9 @@ async function processFileUpload(context, formdata = null) {
     // 否则图片会被记成 application/octet-stream，导致随机图类型过滤、尺寸提取、
     // 图片处理校验全部失效。
     const fileType = resolveFileType(fileName, file.type);
+    if (context.album && getFileTypeCategory(fileType) !== 'image') {
+        return createResponse('Error: Albums only accept images', { status: 400 });
+    }
     const fileSizeBytes = file.size; // 文件大小，单位字节
     const fileSize = (fileSizeBytes / 1024 / 1024).toFixed(2); // 文件大小，单位MB
 

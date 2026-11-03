@@ -13,7 +13,9 @@ describe('upload', () => {
         waits = [];
         tools = await loadFunction('functions/upload/uploadTools.js', { getDatabase: () => db });
         const { UnauthorizedResponse } = await loadFunction('functions/utils/auth/userAuth.js');
+        const albumTools = await loadFunction('functions/utils/albums.js', { getDatabase: () => db });
         mocks = {
+            ...albumTools,
             ...tools,
             ...responses,
             getDatabase: () => db,
@@ -83,6 +85,57 @@ describe('upload', () => {
         assert.equal(response.headers.get('Cache-Control'), 'no-store');
         assert.equal(db.records.size, 0);
         assert.deepEqual(storage, {});
+    });
+
+    it('uploads simultaneous same-name album images into distinct R2 objects and rejects a wrong album key', async () => {
+        const { album, manageKey } = await mocks.createAlbum({}, 'Batch');
+        const route = await loadFunction('functions/upload/index.js', mocks);
+        const upload = (key = manageKey, type = 'image/png') => {
+            const form = new FormData();
+            form.set('file', new File([png()], 'photo.png', { type }));
+            const ctx = context('https://test/upload?uploadChannel=telegram&uploadFolder=other&autoRetry=true', form);
+            ctx.request.headers.set('X-Album-Id', album.id);
+            ctx.request.headers.set('X-Album-Key', key);
+            return route.onRequest(ctx);
+        };
+        const responses = await Promise.all([upload(), upload()]);
+        const paths = await Promise.all(responses.map(async response => {
+            assert.equal(response.status, 200);
+            return (await response.json())[0].src;
+        }));
+        assert.notEqual(paths[0], paths[1]);
+        for (const path of paths) {
+            assert.ok(path.startsWith('/file/' + album.directory));
+            const record = await db.getWithMetadata(path.slice(6));
+            assert.equal(record.metadata.Channel, 'CloudflareR2');
+            assert.equal(record.metadata.Directory, album.directory);
+        }
+        assert.equal((await upload(crypto.randomUUID())).status, 403);
+        assert.equal((await upload(manageKey, 'application/pdf')).status, 400);
+    });
+
+    it('binds multipart sessions to their album and rejects cross-album parts and completion', async () => {
+        const chunks = await loadFunction('functions/upload/chunkUpload.js', mocks);
+        const merge = await loadFunction('functions/upload/chunkMerge.js', mocks);
+        const album = { id: crypto.randomUUID() };
+        const form = new FormData();
+        form.set('originalFileName', 'photo.png'); form.set('originalFileType', 'image/png'); form.set('totalChunks', '2');
+        const init = context('https://test/upload?uploadChannel=cfr2', form);
+        init.album = album;
+        const result = await chunks.initializeChunkedUpload(init);
+        assert.equal(result.status, 200);
+        const { uploadId } = await result.json();
+        const stored = JSON.parse(await db.get('upload_session_' + uploadId));
+        assert.equal(stored.albumId, album.id);
+        for (const handler of [chunks.handleChunkUpload, merge.handleChunkMerge]) {
+            const part = new FormData();
+            part.set('uploadId', uploadId); part.set('originalFileName', 'photo.png');
+            part.set('originalFileType', 'image/png'); part.set('totalChunks', '2'); part.set('chunkIndex', '0');
+            part.set('file', new File([png()], 'part.png'));
+            const ctx = context('https://test/upload?uploadChannel=cfr2', part);
+            ctx.album = { id: crypto.randomUUID() };
+            assert.equal((await handler(ctx)).status, 403);
+        }
     });
 
     it('blocks forbidden upload IPs before parsing or storing a file', async () => {
